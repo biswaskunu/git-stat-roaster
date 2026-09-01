@@ -20,13 +20,25 @@ struct Repo {
     fork: bool,
 }
 
+fn current_year() -> i32 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let secs_since_epoch = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock is before unix epoch")
+        .as_secs();
+
+    // average seconds in a year, accounts for leap years well enough for our purposes
+    const SECS_PER_YEAR: u64 = 31_557_600;
+
+    1970 + (secs_since_epoch / SECS_PER_YEAR) as i32
+}
+
 fn account_age_years(created_at: &str) -> i32 {
-    let current_year = 2026;
     let created_year: i32 = created_at[0..4]
         .parse()
         .expect("created_at did not start with a 4-digit year");
-    
-    current_year - created_year
+    current_year() - created_year
 }
 
 fn most_used_language(repos: &[Repo]) -> Option<String> {
@@ -113,6 +125,7 @@ async fn main() {
     let top_starred = most_starred_repo(&repos);
     let top_forked = most_forked_repo(&repos);
 
+    
     println!("--- {} ---", user.login);
     println!("account age: {} years", age_years);
     println!("public_repos (raw, incl. forks): {}", user.public_repos);
