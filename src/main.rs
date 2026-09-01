@@ -35,7 +35,8 @@ fn current_year() -> i32 {
 }
 
 fn account_age_years(created_at: &str) -> i32 {
-    let created_year: i32 = created_at[0..4]
+    let created_year: i32 = created_at.get(0..4)
+        .expect("too short date argument")
         .parse()
         .expect("created_at did not start with a 4-digit year");
     current_year() - created_year
@@ -125,7 +126,7 @@ async fn main() {
     let top_starred = most_starred_repo(&repos);
     let top_forked = most_forked_repo(&repos);
 
-    
+
     println!("--- {} ---", user.login);
     println!("account age: {} years", age_years);
     println!("public_repos (raw, incl. forks): {}", user.public_repos);
