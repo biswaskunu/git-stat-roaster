@@ -12,29 +12,88 @@ pub struct Stats<'a> {
     pub following: u32,
 }
 
-/// Account age vs. repo count. e.g. "N years on GitHub and only M repos?"
+/// Account age vs. repo count, with different framing depending on scale.
 pub fn account_age_jokes(stats: &Stats) -> Vec<String> {
     let age = stats.account_age_years;
     let repos = stats.non_fork_repo_count;
 
-    vec![
+    // Brand new account — different joke territory than a stale veteran one.
+    if age <= 0 {
+        return vec![
+            "Account so new the paint hasn't dried, and there's already this much to judge.".to_string(),
+            "Joined GitHub this year. Bold of you to already have opinions about tabs vs spaces.".to_string(),
+        ];
+    }
+
+    let mut jokes = vec![
         format!(
             "{} years on GitHub and only {} repos to show for it.",
             age, repos
         ),
-        // TODO: add 2-3 more variants, maybe branch on age/repo thresholds
-    ]
+        format!(
+            "That's {} repos in {} years — roughly one every {:.1} years. Glacial.",
+            repos,
+            age,
+            if repos > 0 { age as f64 / repos as f64 } else { age as f64 }
+        ),
+    ];
+
+    if repos == 0 {
+        jokes.push(format!(
+            "{} years and zero repos. Just here for the vibes, apparently.",
+            age
+        ));
+    } else if (repos as i32) > age * 20 {
+        jokes.push(format!(
+            "{} repos in {} years — either wildly productive or wildly indecisive about naming things.",
+            repos, age
+        ));
+    } else if age >= 10 {
+        jokes.push(format!(
+            "{} years old and still shipping like it's a side project. Which, let's be honest, it is.",
+            age
+        ));
+    }
+
+    jokes
 }
 
-/// Most-used language jokes (JS/npm cardio, Python indentation, etc).
+/// Most-used language jokes, including a small set of per-language burns.
 pub fn language_jokes(stats: &Stats) -> Vec<String> {
     match stats.most_used_language {
-        Some(lang) => vec![
-            format!("Mostly {}? Bold choice.", lang),
-            // TODO: per-language template variants
-        ],
+        Some(lang) => {
+            let mut jokes = vec![
+                format!("Mostly {}? Bold choice.", lang),
+                format!("{} is the main language here. Says a lot, and none of it flattering.", lang),
+            ];
+
+            match lang.to_lowercase().as_str() {
+                "javascript" | "typescript" => jokes.push(
+                    "npm install is basically your cardio at this point.".to_string(),
+                ),
+                "python" => jokes.push(
+                    "Indentation-based syntax for someone who clearly struggles with structure.".to_string(),
+                ),
+                "rust" => jokes.push(
+                    "Fighting the borrow checker so you don't have to fight anyone in your personal life.".to_string(),
+                ),
+                "java" => jokes.push(
+                    "AbstractFactoryFactoryBuilder energy detected.".to_string(),
+                ),
+                "html" | "css" => jokes.push(
+                    "Calling that a 'language' is doing a lot of heavy lifting.".to_string(),
+                ),
+                "go" => jokes.push(
+                    "if err != nil energy, in code and in life.".to_string(),
+                ),
+                _ => {}
+            }
+
+            jokes
+        }
         None => vec![
             "Not even a dominant language. Just vibes, apparently.".to_string(),
+            "No detectable language pattern. A true polyglot, or just noncommittal.".to_string(),
         ],
     }
 }
@@ -42,24 +101,35 @@ pub fn language_jokes(stats: &Stats) -> Vec<String> {
 /// Star count extremes — including the "zero stars, ever" case.
 pub fn star_jokes(stats: &Stats) -> Vec<String> {
     match stats.top_starred_repo {
-        Some((name, stars)) if stars == 0 => vec![
+        Some((name, 0)) => vec![
             format!("Even '{}' couldn't get a single star.", name),
+            format!("'{}' sits at zero stars. Even your mom didn't star it.", name),
+        ],
+        Some((name, stars)) if stars < 5 => vec![
+            format!("'{}' peaked at {} stars. Peaked.", name, stars),
+            format!("{} stars on '{}' — technically nonzero, generously called a success.", stars, name),
         ],
         Some((name, stars)) => vec![
-            format!("'{}' peaked at {} stars. Peaked.", name, stars),
+            format!("'{}' has {} stars. Alright, that one's actually kind of impressive.", name, stars),
         ],
-        None => vec!["No repos, no stars, no problem I guess.".to_string()],
+        None => vec![
+            "No repos, no stars, no problem I guess.".to_string(),
+        ],
     }
 }
 
 /// Most-forked repo jokes — including the "nobody forked anything" case.
 pub fn fork_jokes(stats: &Stats) -> Vec<String> {
     match stats.top_forked_repo {
-        Some((name, forks)) if forks == 0 => vec![
+        Some((name, 0)) => vec![
             format!("Not even one fork of '{}'. Nobody's copying this homework.", name),
+            format!("Zero forks on '{}'. Original work, unfortunately for its popularity.", name),
         ],
         Some((name, forks)) => vec![
-            format!("'{}' got forked {} times. Guess someone found it useful, unlike you finishing it.", name, forks),
+            format!(
+                "'{}' got forked {} times. Guess someone found it useful, unlike you finishing it.",
+                name, forks
+            ),
         ],
         None => vec!["No repos to fork, no forks to brag about.".to_string()],
     }
@@ -68,13 +138,19 @@ pub fn fork_jokes(stats: &Stats) -> Vec<String> {
 /// Bio presence/length/absence jokes.
 pub fn bio_jokes(stats: &Stats) -> Vec<String> {
     match stats.bio {
-        None => vec!["No bio. Mysterious, or just didn't bother.".to_string()],
-        Some(bio) if bio.trim().is_empty() => {
-            vec!["Bio exists but says nothing. Impressive, actually.".to_string()]
-        }
+        None => vec![
+            "No bio. Mysterious, or just didn't bother.".to_string(),
+            "Bio field left empty. Nothing to say for yourself, huh.".to_string(),
+        ],
+        Some(bio) if bio.trim().is_empty() => vec![
+            "Bio exists but says nothing. Impressive, actually.".to_string(),
+        ],
+        Some(bio) if bio.trim().len() < 15 => vec![
+            format!("Bio: \"{}\". Really put the effort in there.", bio.trim()),
+        ],
         Some(_) => vec![
-            // TODO: maybe roast bio length/content itself here
-            "At least you filled in the bio field.".to_string(),
+            "At least you filled in the bio field. Effort noted, barely.".to_string(),
+            "A whole bio. Someone's proud of themselves.".to_string(),
         ],
     }
 }
@@ -82,19 +158,37 @@ pub fn bio_jokes(stats: &Stats) -> Vec<String> {
 /// Follower/following ratio jokes.
 pub fn follow_ratio_jokes(stats: &Stats) -> Vec<String> {
     let (f, g) = (stats.followers, stats.following);
-    if g > f {
-        vec![format!(
-            "Following {} people but only {} follow back. Rough.",
-            g, f
-        )]
+
+    if f == 0 && g == 0 {
+        return vec![
+            "Zero followers, following zero people. A true lone wolf, or just new here.".to_string(),
+        ];
+    }
+
+    if g > f * 3 && g > 5 {
+        vec![
+            format!(
+                "Following {} people but only {} follow back. That's not networking, that's begging.",
+                g, f
+            ),
+        ]
+    } else if f > g * 3 && f > 5 {
+        vec![
+            format!(
+                "{} followers to {} following — practically GitHub royalty, or just followed by bots.",
+                f, g
+            ),
+        ]
     } else {
-        vec![format!("{} followers, {} following. Balanced enough.", f, g)]
+        vec![
+            format!("{} followers, {} following. Balanced enough.", f, g),
+        ]
     }
 }
 
-/// Pulls one joke from each category pool and picks one line overall at random.
-/// TODO: decide if you want one joke per category (multi-line roast) or
-/// just one joke total (single punchline) — currently does the latter.
+/// Pulls candidate jokes from every category and picks one line at random.
+/// Currently a single punchline rather than a multi-line roast — revisit
+/// if you want a paragraph-style roast instead (v0.2 idea).
 pub fn generate_roast(stats: &Stats) -> String {
     let mut pool: Vec<String> = Vec::new();
     pool.extend(account_age_jokes(stats));
@@ -105,7 +199,10 @@ pub fn generate_roast(stats: &Stats) -> String {
     pool.extend(follow_ratio_jokes(stats));
 
     let mut rng = rand::rng();
-    pool.choose(&mut rng)
-        .cloned()
-        .unwrap_or_else(|| format!("{} has no discernible personality traits to roast.", stats.username))
+    pool.choose(&mut rng).cloned().unwrap_or_else(|| {
+        format!(
+            "{} has no discernible personality traits to roast. Truly a blank slate.",
+            stats.username
+        )
+    })
 }
