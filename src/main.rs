@@ -1,3 +1,6 @@
+mod jokes;
+
+use jokes::Stats;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -35,8 +38,7 @@ fn current_year() -> i32 {
 }
 
 fn account_age_years(created_at: &str) -> i32 {
-    let created_year: i32 = created_at.get(0..4)
-        .expect("too short date argument")
+    let created_year: i32 = created_at[0..4]
         .parse()
         .expect("created_at did not start with a 4-digit year");
     current_year() - created_year
@@ -126,7 +128,6 @@ async fn main() {
     let top_starred = most_starred_repo(&repos);
     let top_forked = most_forked_repo(&repos);
 
-
     println!("--- {} ---", user.login);
     println!("account age: {} years", age_years);
     println!("public_repos (raw, incl. forks): {}", user.public_repos);
@@ -142,4 +143,20 @@ async fn main() {
         "most-forked repo: {:?}",
         top_forked.map(|r| (&r.name, r.forks_count))
     );
+
+    // roast
+    let stats = Stats {
+        username: &user.login,
+        account_age_years: age_years,
+        non_fork_repo_count: non_fork_repos.len() as u32,
+        most_used_language: language.as_deref(),
+        top_starred_repo: top_starred.map(|r| (r.name.as_str(), r.stargazers_count)),
+        top_forked_repo: top_forked.map(|r| (r.name.as_str(), r.forks_count)),
+        bio: user.bio.as_deref(),
+        followers: user.followers,
+        following: user.following,
+    };
+
+    println!();
+    println!("{}", jokes::generate_roast(&stats));
 }
