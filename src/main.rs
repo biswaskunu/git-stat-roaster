@@ -21,6 +21,7 @@ struct Repo {
     stargazers_count: u32,
     forks_count: u32,
     fork: bool,
+    created_at: String,
 }
 
 fn current_year() -> i32 {
@@ -73,6 +74,15 @@ fn most_forked_repo(repos: &[Repo]) -> Option<&Repo> {
         .max_by_key(|r| r.forks_count)
 }
 
+fn oldest_repo(repos: &[Repo]) -> Option<&Repo> {
+    // created_at is an ISO 8601 string (e.g. "2019-05-02T12:00:00Z"),
+    // so plain string comparison sorts chronologically same as a real date type would.
+    repos
+        .iter()
+        .filter(|r| !r.fork)
+        .min_by(|a, b| a.created_at.cmp(&b.created_at))
+}
+
 #[tokio::main]
 async fn main() {
     let username = std::env::args()
@@ -103,7 +113,6 @@ async fn main() {
     }
 
     let user: GitHubUser = resp.json().await.expect("failed to parse user json");
-
 
     // fetch repos, paginated (GitHub caps at 100/page, defaults to 30 without per_page)
     let mut repos: Vec<Repo> = Vec::new();
@@ -137,7 +146,6 @@ async fn main() {
         }
         page += 1;
     }
-    
 
     // derived stats
     let age_years = account_age_years(&user.created_at);
@@ -145,6 +153,7 @@ async fn main() {
     let language = most_used_language(&repos);
     let top_starred = most_starred_repo(&repos);
     let top_forked = most_forked_repo(&repos);
+    let oldest = oldest_repo(&repos);
 
     println!("--- {} ---", user.login);
     println!("account age: {} years", age_years);
@@ -160,6 +169,10 @@ async fn main() {
     println!(
         "most-forked repo: {:?}",
         top_forked.map(|r| (&r.name, r.forks_count))
+    );
+    println!(
+        "oldest repo: {:?}",
+        oldest.map(|r| (&r.name, &r.created_at))
     );
 
     // roast
