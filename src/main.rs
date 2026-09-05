@@ -85,21 +85,31 @@ fn oldest_repo(repos: &[Repo]) -> Option<&Repo> {
 
 #[tokio::main]
 async fn main() {
-    let username = std::env::args()
-        .nth(1)
-        .expect("usage: git-stat-roaster <github-username>");
+    let username = match std::env::args().nth(1) {
+        Some(u) => u,
+        None => {
+            println!("usage: git-stat-roaster <github-username>");
+            return;
+        }
+    };
 
     let client = reqwest::Client::new();
 
     // fetching user profile
     let user_url = format!("https://api.github.com/users/{}", username);
-    let resp = client
+    let resp = match client
         .get(&user_url)
         .header("User-Agent", "git-stat-roaster")
         .header("Accept", "application/vnd.github+json")
         .send()
         .await
-        .expect("request failed");
+    {
+        Ok(r) => r,
+        Err(e) => {
+            println!("network request failed: {}", e);
+            return;
+        }
+    };
 
     // errors
     if resp.status() == reqwest::StatusCode::NOT_FOUND {
@@ -112,7 +122,14 @@ async fn main() {
         return;
     }
 
-    let user: GitHubUser = resp.json().await.expect("failed to parse user json");
+    let user: GitHubUser = match resp.json().await {
+        Ok(u) => u,
+        Err(e) => {
+            println!("unexpected response shape from github (couldn't parse user data): {}", e);
+            println!("this is often a rate-limit response disguised as a 200 — wait an hour and retry.");
+            return;
+        }
+    };
 
     // fetch repos, paginated (GitHub caps at 100/page, defaults to 30 without per_page)
     let mut repos: Vec<Repo> = Vec::new();
@@ -124,20 +141,33 @@ async fn main() {
             "https://api.github.com/users/{}/repos?per_page={}&page={}",
             username, PER_PAGE, page
         );
-        let repos_resp = client
+        let repos_resp = match client
             .get(&repos_url)
             .header("User-Agent", "git-stat-roaster")
             .header("Accept", "application/vnd.github+json")
             .send()
             .await
-            .expect("request failed");
+        {
+            Ok(r) => r,
+            Err(e) => {
+                println!("network request failed while fetching repos: {}", e);
+                return;
+            }
+        };
 
         if !repos_resp.status().is_success() {
             println!("github api error fetching repos: {}", repos_resp.status());
             return;
         }
 
-        let page_repos: Vec<Repo> = repos_resp.json().await.expect("failed to parse repos json");
+        let page_repos: Vec<Repo> = match repos_resp.json().await {
+            Ok(r) => r,
+            Err(e) => {
+                println!("unexpected response shape from github (couldn't parse repos data): {}", e);
+                println!("this is often a rate-limit response disguised as a 200 — wait an hour and retry.");
+                return;
+            }
+        };
         let got = page_repos.len();
         repos.extend(page_repos);
 
