@@ -104,22 +104,40 @@ async fn main() {
 
     let user: GitHubUser = resp.json().await.expect("failed to parse user json");
 
-    // fetch repos
-    let repos_url = format!("https://api.github.com/users/{}/repos", username);
-    let repos_resp = client
-        .get(&repos_url)
-        .header("User-Agent", "git-stat-roaster")
-        .header("Accept", "application/vnd.github+json")
-        .send()
-        .await
-        .expect("request failed");
 
-    if !repos_resp.status().is_success() {
-        println!("github api error fetching repos: {}", repos_resp.status());
-        return;
+    // fetch repos, paginated (GitHub caps at 100/page, defaults to 30 without per_page)
+    let mut repos: Vec<Repo> = Vec::new();
+    let mut page = 1u32;
+    const PER_PAGE: u32 = 100;
+
+    loop {
+        let repos_url = format!(
+            "https://api.github.com/users/{}/repos?per_page={}&page={}",
+            username, PER_PAGE, page
+        );
+        let repos_resp = client
+            .get(&repos_url)
+            .header("User-Agent", "git-stat-roaster")
+            .header("Accept", "application/vnd.github+json")
+            .send()
+            .await
+            .expect("request failed");
+
+        if !repos_resp.status().is_success() {
+            println!("github api error fetching repos: {}", repos_resp.status());
+            return;
+        }
+
+        let page_repos: Vec<Repo> = repos_resp.json().await.expect("failed to parse repos json");
+        let got = page_repos.len();
+        repos.extend(page_repos);
+
+        if got < PER_PAGE as usize {
+            break;
+        }
+        page += 1;
     }
-
-    let repos: Vec<Repo> = repos_resp.json().await.expect("failed to parse repos json");
+    
 
     // derived stats
     let age_years = account_age_years(&user.created_at);
