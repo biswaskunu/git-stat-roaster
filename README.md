@@ -1,58 +1,54 @@
 # git-stat-roaster
 
-Give it a GitHub username, it pulls public stats and generates a short, funny "roast" from them.
+Give it a GitHub username, it pulls public stats and generates a short, funny "roast" from them — now a small web app instead of just a CLI.
 
-## Status: v0.2 in progress
+## Status: v0.3 in progress (web version)
+
+## Structure
+
+```
+git-stat-roaster/
+├── backend/      Rust + Axum JSON API, also serves the frontend
+│   └── src/
+│       ├── main.rs    server + routing
+│       ├── github.rs  GitHub API fetch layer, paginated, typed errors
+│       ├── stats.rs    derived stats (age, language, stars, forks, oldest repo)
+│       └── jokes.rs    joke pools + roast generator (unchanged from v0.2)
+└── frontend/      plain HTML/CSS/JS, no build step
+```
 
 ## What works right now
 
-- Fetches a user's public GitHub profile (`GET /users/{username}`)
-- Fetches their public repos (`GET /users/{username}/repos`), paginated across all pages (not capped at the default 30)
-- Handles the "user doesn't exist" (404) case, other non-success API statuses, network failures, and unexpected/malformed JSON responses without crashing
-- Computes derived stats:
-  - Account age in years (current year pulled from `std::time`, not hardcoded)
-  - Most-used language across non-fork repos (simple repo-count tally, no extra API calls)
-  - Repo counts: raw `public_repos` (incl. forks) alongside a non-fork-only count
-  - Most-starred repo and most-forked repo (forks excluded from both)
-  - Oldest repo (forks excluded)
-- Maps those stats to a roast: per-category joke pools (account age, language, stars, forks, bio, follower/following ratio) with 2-4 template variants each, one picked at random via `rand`
-- Prints the fetched profile fields, computed stats, and a roast line to the console
+- `GET /api/roast/:username` — fetches the user's profile + all public repos (paginated), computes derived stats, and returns them alongside a roast line as JSON
+- Errors (user not found, GitHub API errors, network failures, malformed responses) come back as proper HTTP status codes + a JSON `{ "error": "..." }` body instead of crashing
+- A minimal frontend: type a username, hit "Roast me", see the stats and roast rendered on the page
+- Backend serves the frontend directly (`ServeDir` fallback), so running one process gives you the whole app at `http://localhost:3000`
 
-## What's not built yet
+## Running it locally
 
-- Further expansion of joke variety per category (ongoing, self-directed)
-- Image card output (v0.3+, optional)
-- Any web-facing endpoint (v0.3+, optional)
+```bash
+cd backend
+cargo run
+```
+
+Then open `http://localhost:3000` in a browser.
+
+By default it binds to port 3000; set `PORT` to override (useful for deployment platforms that assign their own port).
 
 ## Tech stack
 
-- Rust
-- `reqwest` (with `json` feature) — GitHub API calls
-- `serde` / `serde_json` — response deserialization
-- `tokio` (`rt-multi-thread`, `macros`) — async runtime
-- `rand` — random joke selection
+- **Backend**: Rust, Axum, `reqwest` (GitHub API calls), `serde`/`serde_json`, `tokio`, `rand` (joke selection), `tower-http` (static file serving + CORS)
+- **Frontend**: plain HTML/CSS/JS — no framework, no build step, kept intentionally simple
 
-No database, no auth, no stored user data — stateless lookup-and-print for now.
-
-## Running it
-
-```bash
-cargo run -- <github-username>
-```
-
-Example:
-
-```bash
-cargo run -- biswaskunu
-```
-
-Prints the fetched profile fields, computed stats, and a roast line for that user.
+No database, no auth, no stored user data — stateless lookup-and-respond, same as the CLI version.
 
 ## Known limitations
 
-- **Unauthenticated rate limits**: GitHub API requests here are unauthenticated, capped at 60 requests/hour per IP. Fine for local/personal use; running it repeatedly in a short window (or letting others hit it) will trip the limit. A PAT would raise this to 5000/hr but isn't wired up in this version — deliberately, to keep this a no-secrets, clone-and-run tool. If you hit the limit, requests will now print a clean error message (rather than panicking) telling you to wait an hour.
-- **New accounts / zero repos / private-only profiles**: all derived stats are `Option`-based and the joke pools have dedicated branches for these cases (e.g. brand-new accounts, zero stars, zero forks, empty bio), so these don't produce broken or nonsensical output.
+- **Unauthenticated rate limits**: GitHub API requests are unauthenticated, capped at 60 requests/hour per IP. A rate-limited request now surfaces as a clean `502` with an explanatory message rather than crashing the server.
+- **New accounts / zero repos / private-only profiles**: all derived stats are optional and the joke pools have dedicated branches for these cases, so they don't produce broken output.
+- **CORS is currently wide open** (`CorsLayer::permissive()`) to make local frontend-only dev servers easy to run against the API. Tighten this before any real deployment.
 
 ## Next milestone
 
-Move on to v0.3: either a web-facing endpoint (Axum) or an image card generator, per the project spec — pick based on whether you want a web tool or static content to post.
+- Deploy to Railway (or similar) per the v1.0 milestone in the project spec
+- Optional: image card output, if you want shareable static content instead of/alongside the web tool

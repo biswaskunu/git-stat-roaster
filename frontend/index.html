@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>git-stat-roaster</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="wrap">
+    <h1>git-stat-roaster</h1>
+    <p class="tagline">Type a GitHub username. Get judged by your own public stats.</p>
+
+    <form id="roast-form">
+      <input
+        id="username-input"
+        type="text"
+        placeholder="e.g. biswaskunu"
+        autocomplete="off"
+        required
+      />
+      <button type="submit">Roast me</button>
+    </form>
+
+    <div id="status"></div>
+
+    <section id="result" class="hidden">
+      <p class="roast-line" id="roast-line"></p>
+
+      <dl class="stats-grid" id="stats-grid"></dl>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
