@@ -1,4 +1,3 @@
-// use rand::seq::SliceRandom;
 use rand::prelude::IndexedRandom;
 
 pub struct Stats<'a> {
@@ -53,6 +52,19 @@ pub fn star_jokes(stats: &Stats) -> Vec<String> {
     }
 }
 
+/// Most-forked repo jokes — including the "nobody forked anything" case.
+pub fn fork_jokes(stats: &Stats) -> Vec<String> {
+    match stats.top_forked_repo {
+        Some((name, forks)) if forks == 0 => vec![
+            format!("Not even one fork of '{}'. Nobody's copying this homework.", name),
+        ],
+        Some((name, forks)) => vec![
+            format!("'{}' got forked {} times. Guess someone found it useful, unlike you finishing it.", name, forks),
+        ],
+        None => vec!["No repos to fork, no forks to brag about.".to_string()],
+    }
+}
+
 /// Bio presence/length/absence jokes.
 pub fn bio_jokes(stats: &Stats) -> Vec<String> {
     match stats.bio {
@@ -88,6 +100,7 @@ pub fn generate_roast(stats: &Stats) -> String {
     pool.extend(account_age_jokes(stats));
     pool.extend(language_jokes(stats));
     pool.extend(star_jokes(stats));
+    pool.extend(fork_jokes(stats));
     pool.extend(bio_jokes(stats));
     pool.extend(follow_ratio_jokes(stats));
 
