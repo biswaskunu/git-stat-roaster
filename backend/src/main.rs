@@ -114,7 +114,7 @@ async fn main() {
         .route("/api/roast/:username", get(roast_handler))
         .with_state(state)
         .layer(CorsLayer::permissive())
-        .fallback_service(ServeDir::new("../frontend"));
+        .fallback_service(ServeDir::new("../frontend/dist"));
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
     let addr = format!("0.0.0.0:{}", port);

@@ -1,7 +1,13 @@
-import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-})
+  server: {
+    // during `npm run dev`, forward API calls to the backend so you don't
+    // need to run the Rust build just to iterate on the UI
+    proxy: {
+      "/api": "http://localhost:3000",
+    },
+  },
+});
