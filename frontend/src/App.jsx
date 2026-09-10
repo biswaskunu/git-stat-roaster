@@ -7,14 +7,15 @@ function fmtRepo(repo, unitLabel) {
 
 function statRows(data) {
   return [
-    ["Account age", `${data.account_age_years} years`],
-    ["Public repos", `${data.public_repos} (${data.non_fork_repo_count} non-fork)`],
-    ["Followers / following", `${data.followers} / ${data.following}`],
-    ["Bio", data.bio || "—"],
-    ["Most-used language", data.most_used_language || "—"],
-    ["Most-starred repo", fmtRepo(data.top_starred_repo, "stars")],
-    ["Most-forked repo", fmtRepo(data.top_forked_repo, "forks")],
-    ["Oldest repo", data.oldest_repo ? data.oldest_repo.name : "—"],
+    ["account age", `${data.account_age_years}y`],
+    ["repos", `${data.public_repos} (${data.non_fork_repo_count} non-fork)`],
+    ["followers", `${data.followers}`],
+    ["following", `${data.following}`],
+    ["bio", data.bio || "—"],
+    ["top language", data.most_used_language || "—"],
+    ["most starred", fmtRepo(data.top_starred_repo, "stars")],
+    ["most forked", fmtRepo(data.top_forked_repo, "forks")],
+    ["oldest repo", data.oldest_repo ? data.oldest_repo.name : "—"],
   ];
 }
 
@@ -51,41 +52,52 @@ export default function App() {
   }
 
   return (
-    <main className="wrap">
-      <h1>git-stat-roaster</h1>
-      <p className="tagline">
-        Type a GitHub username. Get judged by your own public stats.
-      </p>
+    <main className="page">
+      <div className="ticket">
+        <header className="ticket-head">
+          <h1>git-stat-roaster</h1>
+          <p className="tagline">Hand over a GitHub username. Walk away with a receipt.</p>
+        </header>
 
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="e.g. biswaskunu"
-          autoComplete="off"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-        <button type="submit" disabled={loading}>
-          {loading ? "Roasting…" : "Roast me"}
-        </button>
-      </form>
+        <form onSubmit={handleSubmit} className="lookup-form">
+          <label htmlFor="username-input" className="prompt">$</label>
+          <input
+            id="username-input"
+            type="text"
+            placeholder="github-username"
+            autoComplete="off"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+          <button type="submit" disabled={loading}>
+            {loading ? "pulling stats…" : "roast"}
+          </button>
+        </form>
 
-      {error && <div className="status">{error}</div>}
+        {error && <p className="error-line">✕ {error}</p>}
 
-      {data && (
-        <section className="result">
-          <p className="roast-line">{data.roast}</p>
-          <dl className="stats-grid">
-            {statRows(data).map(([label, value]) => (
-              <div className="stat-row" key={label}>
-                <dt>{label}</dt>
-                <dd>{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      )}
+        {data && (
+          <section className="result">
+            <div className="verdict">
+              <span className="verdict-label">the verdict</span>
+              <p className="verdict-text">{data.roast}</p>
+            </div>
+
+            <dl className="ledger">
+              {statRows(data).map(([label, value]) => (
+                <div className="ledger-row" key={label}>
+                  <dt>{label}</dt>
+                  <span className="leader" aria-hidden="true" />
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <p className="ticket-footer">— issued for @{data.username} —</p>
+          </section>
+        )}
+      </div>
     </main>
   );
 }
