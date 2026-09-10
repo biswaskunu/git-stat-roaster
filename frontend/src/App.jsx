@@ -1,5 +1,12 @@
 import { useState } from "react";
 
+const LOADING_LINES = [
+  "cloning your dignity…",
+  "resolving merge conflicts with your ego…",
+  "running git blame on your life choices…",
+  "force-pushing to main…",
+];
+
 function fmtRepo(repo, unitLabel) {
   if (!repo) return "—";
   return `${repo.name} (${repo[unitLabel]})`;
@@ -7,15 +14,14 @@ function fmtRepo(repo, unitLabel) {
 
 function statRows(data) {
   return [
-    ["account age", `${data.account_age_years}y`],
-    ["repos", `${data.public_repos} (${data.non_fork_repo_count} non-fork)`],
-    ["followers", `${data.followers}`],
-    ["following", `${data.following}`],
-    ["bio", data.bio || "—"],
-    ["top language", data.most_used_language || "—"],
-    ["most starred", fmtRepo(data.top_starred_repo, "stars")],
-    ["most forked", fmtRepo(data.top_forked_repo, "forks")],
-    ["oldest repo", data.oldest_repo ? data.oldest_repo.name : "—"],
+    ["age", `${data.account_age_years}y on the platform`],
+    ["repos", `${data.public_repos} total · ${data.non_fork_repo_count} non-fork`],
+    ["followers", `${data.followers} follower${data.followers === 1 ? "" : "s"} / ${data.following} following`],
+    ["bio", data.bio || "empty string"],
+    ["language", data.most_used_language || "undefined"],
+    ["top star", fmtRepo(data.top_starred_repo, "stars")],
+    ["top fork", fmtRepo(data.top_forked_repo, "forks")],
+    ["oldest", data.oldest_repo ? data.oldest_repo.name : "—"],
   ];
 }
 
@@ -24,6 +30,9 @@ export default function App() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingLine] = useState(
+    () => LOADING_LINES[Math.floor(Math.random() * LOADING_LINES.length)]
+  );
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -39,65 +48,75 @@ export default function App() {
       const json = await res.json();
 
       if (!res.ok) {
-        setError(json.error || "Something went wrong.");
+        setError(json.error || "something went wrong. blame github, not us.");
         return;
       }
 
       setData(json);
     } catch (err) {
-      setError("Couldn't reach the server. Is the backend running?");
+      setError("couldn't reach the server. is it running? did you check?");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="page">
-      <div className="ticket">
-        <header className="ticket-head">
-          <h1>git-stat-roaster</h1>
-          <p className="tagline">Hand over a GitHub username. Walk away with a receipt.</p>
-        </header>
+    <main className="wrap">
+      <header className="masthead">
+        <div className="prompt">
+          <span className="prompt-sigil">$</span> git-stat-roaster
+          <span className="cursor" aria-hidden="true" />
+        </div>
+        <p className="tagline">
+          Point it at a GitHub username. It reads your public commit history
+          and judges you accordingly.
+        </p>
+      </header>
 
-        <form onSubmit={handleSubmit} className="lookup-form">
-          <label htmlFor="username-input" className="prompt">$</label>
+      <form onSubmit={handleSubmit} className="lookup">
+        <label className="field">
+          <span className="field-label">username</span>
           <input
-            id="username-input"
             type="text"
-            placeholder="github-username"
+            placeholder="octocat"
             autoComplete="off"
+            spellCheck="false"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
           />
-          <button type="submit" disabled={loading}>
-            {loading ? "pulling stats…" : "roast"}
-          </button>
-        </form>
+        </label>
+        <button type="submit" disabled={loading}>
+          {loading ? "roasting…" : "roast me"}
+        </button>
+      </form>
 
-        {error && <p className="error-line">✕ {error}</p>}
+      {loading && <p className="status status-loading">{loadingLine}</p>}
+      {error && <p className="status status-error">{error}</p>}
 
-        {data && (
-          <section className="result">
-            <div className="verdict">
-              <span className="verdict-label">the verdict</span>
-              <p className="verdict-text">{data.roast}</p>
-            </div>
+      {data && (
+        <section className="result">
+          <blockquote className="roast-line">
+            <span className="quote-mark" aria-hidden="true">
+              “
+            </span>
+            {data.roast}
+          </blockquote>
 
-            <dl className="ledger">
-              {statRows(data).map(([label, value]) => (
-                <div className="ledger-row" key={label}>
-                  <dt>{label}</dt>
-                  <span className="leader" aria-hidden="true" />
-                  <dd>{value}</dd>
-                </div>
-              ))}
-            </dl>
+          <dl className="diff">
+            {statRows(data).map(([label, value]) => (
+              <div className="diff-row" key={label}>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
 
-            <p className="ticket-footer">— issued for @{data.username} —</p>
-          </section>
-        )}
-      </div>
+          <p className="footnote">
+            no commits were harmed in the making of this roast.
+          </p>
+        </section>
+      )}
     </main>
   );
 }
